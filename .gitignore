@@ -50,3 +50,7 @@ ms-playwright/
 # NuGet
 packages/
 *.nupkg
+
+# Node
+node_modules/
+package-lock.json

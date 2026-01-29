@@ -7,9 +7,9 @@ namespace GenpactQA.Tests;
 public class PlaywrightSetup
 {
     [OneTimeSetUp]
-    public async Task InstallBrowsersAsync()
+    public void InstallBrowsers()
     {
-        var exitCode = await Microsoft.Playwright.Program.Main(new[] { "install", "chromium" });
+        var exitCode = Microsoft.Playwright.Program.Main(new[] { "install", "chromium" });
         if (exitCode != 0)
             throw new InvalidOperationException($"Playwright install exited with code {exitCode}");
     }

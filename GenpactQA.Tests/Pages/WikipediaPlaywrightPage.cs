@@ -25,22 +25,42 @@ public class WikipediaPlaywrightPage
     /// </summary>
     public async Task<string> GetDebuggingFeaturesSectionTextAsync()
     {
+        // First approach: Get the heading and try to find the associated content container
         var heading = _page.Locator("#Debugging_features");
-        await heading.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
-
-        // Get content from this heading until the next h3 (exclusive): following-sibling in the same parent
-        var sectionText = await _page.EvaluateAsync<string>(@"() => {
-            const el = document.getElementById('Debugging_features');
-            if (!el) return '';
-            let text = el.innerText || '';
-            let sibling = el.nextElementSibling;
-            while (sibling && sibling.tagName !== 'H3') {
-                text += '\n' + (sibling.innerText || '');
-                sibling = sibling.nextElementSibling;
+        var headingText = await heading.InnerTextAsync();
+        
+        // Try to find the content by looking at the structure
+        // Wikipedia typically puts the content in sibling elements after the heading
+        var contentText = await _page.EvaluateAsync<string>(@"() => {
+            const heading = document.querySelector('#Debugging_features');
+            if (!heading) return '';
+            
+            // Get the parent and then find the next sibling elements that are content
+            let text = '';
+            let current = heading.parentElement ? heading.parentElement.nextElementSibling : null;
+            
+            // Collect text from the next few siblings until we hit another H3
+            let count = 0;
+            while (current && count < 10) {  // Limit to prevent infinite loop
+                if (current.tagName === 'H3') {
+                    // Check if it's a different section
+                    if (current.querySelector('#Debugging_features') === null) {
+                        break;
+                    }
+                }
+                
+                if (current.innerText) {
+                    text += current.innerText + '\n';
+                }
+                
+                current = current.nextElementSibling;
+                count++;
             }
-            return text;
+            
+            return text.trim();
         }");
-        return sectionText ?? string.Empty;
+        
+        return (headingText + "\n" + contentText).Trim();
     }
 
     /// <summary>
@@ -48,8 +68,8 @@ public class WikipediaPlaywrightPage
     /// </summary>
     public ILocator GetMicrosoftDevelopmentToolsSection()
     {
-        var heading = _page.GetByRole(AriaRole.Heading, new() { Name = "Microsoft development tools" });
-        return heading.Locator("xpath=ancestor::*[.//li][1]");
+        // Look for the text "Microsoft development tools" within the page content, not necessarily as a heading
+        return _page.Locator(":text('Microsoft development tools')").Locator("xpath=../.."); // Go up a couple of levels to get the container
     }
 
     /// <summary>
@@ -182,18 +202,118 @@ public class WikipediaPlaywrightPage
         return (notLinkNames.Count == 0, notLinkNames);
     }
 
-    /// <summary>
-    /// Opens the Appearance menu (top-right, e.g. spectacles icon) and sets Color to "Dark".
-    /// </summary>
-    public async Task OpenAppearanceAndSetColorToDarkAsync()
+/// <summary>
+/// Opens the Appearance menu (top-right, e.g. spectacles icon) and sets Color to "Dark".
+/// </summary>
+public async Task OpenAppearanceAndSetColorToDarkAsync()
+{
+    // Try multiple selectors for the appearance dropdown/menu
+    var appearanceSelectors = new[]
     {
-        // Wikipedia Vector 2022: appearance menu in top-right (personal tools)
-        var appearance = _page.Locator("#vector-appearance-dropdown, [id^='p-appearance'], a[title='Appearance']").First;
-        await appearance.ClickAsync();
+        "#vector-appearance-dropdown",
+        "[id^='p-appearance']",
+        "a[title='Appearance']",
+        ".vector-dropdown[title*='Appearance' i]",
+        "[aria-label*='Appearance' i]"
+    };
 
-        // Color (beta) section: select Dark
-        await _page.GetByRole(AriaRole.Button, new() { Name = "Dark" }).ClickAsync();
+    ILocator appearance = null!;
+    
+    // Try each selector until we find one that works
+    foreach (var selector in appearanceSelectors)
+    {
+        var element = _page.Locator(selector).First;
+        if (await element.IsVisibleAsync())
+        {
+            appearance = element;
+            break;
+        }
     }
+    
+    // If we still don't have an element, try a more general approach
+    if (appearance == null)
+    {
+        // Look for any dropdown or menu in the header area
+        var headerDropdowns = await _page.Locator("header .vector-dropdown, #mw-panel .vector-dropdown").AllAsync();
+        foreach (var dropdown in headerDropdowns)
+        {
+            if (await dropdown.IsVisibleAsync())
+            {
+                appearance = dropdown;
+                break;
+            }
+        }
+    }
+    
+    if (appearance == null)
+    {
+        throw new InvalidOperationException("Could not find appearance dropdown/menu");
+    }
+    
+    await appearance.ClickAsync();
+    
+    // Wait briefly for menu to appear
+    await _page.WaitForTimeoutAsync(1000);
+
+    // Try multiple approaches to find and click the Dark theme option
+    var darkThemeClicked = false;
+    
+    // Approach 1: Look for a button with "Dark" text
+    try
+    {
+        var darkButton = _page.GetByRole(AriaRole.Button, new() { Name = "Dark" });
+        if (await darkButton.IsVisibleAsync())
+        {
+            await darkButton.ClickAsync();
+            darkThemeClicked = true;
+        }
+    }
+    catch
+    {
+        // Ignore and try next approach
+    }
+    
+    // Approach 2: Look for any element with "Dark" text
+    if (!darkThemeClicked)
+    {
+        try
+        {
+            var darkElement = _page.Locator(":text('Dark'), :text('dark')").First;
+            if (await darkElement.IsVisibleAsync())
+            {
+                await darkElement.ClickAsync();
+                darkThemeClicked = true;
+            }
+        }
+        catch
+        {
+            // Ignore and try next approach
+        }
+    }
+    
+    // Approach 3: Look for a radio button or checkbox for "Dark"
+    if (!darkThemeClicked)
+    {
+        try
+        {
+            var darkRadio = _page.Locator("input[type='radio'][value*='dark' i], input[type='checkbox'][value*='dark' i]");
+            if (await darkRadio.First.IsVisibleAsync())
+            {
+                await darkRadio.First.ClickAsync();
+                darkThemeClicked = true;
+            }
+        }
+        catch
+        {
+            // Ignore and try next approach
+        }
+    }
+    
+    if (!darkThemeClicked)
+    {
+        throw new InvalidOperationException("Could not find or click Dark theme option");
+    }
+}
 
     /// <summary>
     /// Checks if the current theme is Dark (html class set by Vector skin).
