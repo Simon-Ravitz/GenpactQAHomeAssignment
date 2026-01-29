@@ -7,7 +7,7 @@ C# + Playwright automation for the [Playwright (software)](https://en.wikipedia.
 - **Language:** C# (.NET 8)
 - **UI/API:** Microsoft.Playwright, HttpClient (MediaWiki Parse API)
 - **Test framework:** NUnit
-- **Bonus:** HTML report (ReportUnit from NUnit results)
+- **Reporting:** ExtentReports 5.0.4 - Automatically generates HTML reports
 
 ## Solution Layout (Clean Architecture)
 
@@ -41,21 +41,35 @@ First run will install Playwright Chromium (one-time). Run tests with HTML resul
 dotnet test --logger "console;verbosity=normal" -- NUnit.WriteXmlResults=TestResults.xml
 ```
 
-## HTML Report (Bonus)
+## HTML Report
 
-Run tests with TRX (XML) output, then open or convert to HTML:
+HTML reports are automatically generated using **ExtentReports** after each test run.
 
-```bash
-dotnet test --logger "trx;LogFileName=TestResults.trx"
-# Open TestResults/TestResults.trx in Azure DevOps or use any TRX/NUnit-to-HTML converter
+**Report Location:**
+```
+GenpactQA.Tests/TestResults/HtmlReport/TestReport.html
 ```
 
-Or with NUnit XML:
+**Features:**
+- Beautiful, interactive HTML dashboard
+- Test execution timeline
+- Pass/Fail statistics with visual charts
+- Detailed test logs with step-by-step information
+- System information (OS, .NET version, etc.)
+- Real-time test result tracking
 
+**To view the report:**
 ```bash
-dotnet test -- NUnit.WriteXmlResults=TestResults.xml
-# Use ReportUnit, nunit-html-report, or any NUnit 3 XML-to-HTML tool to generate an HTML report
+# Run tests (report generates automatically)
+dotnet test
+
+# Open the report in your browser
+open GenpactQA.Tests/TestResults/HtmlReport/TestReport.html  # macOS
+# or
+start GenpactQA.Tests/TestResults/HtmlReport/TestReport.html  # Windows
 ```
+
+The report path will be printed to the console after test execution completes.
 
 ## Tasks Implemented
 
