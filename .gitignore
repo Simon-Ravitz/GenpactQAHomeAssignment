@@ -1,0 +1,52 @@
+# Build
+[Dd]ebug/
+[Rr]elease/
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+*.user
+*.suo
+*.cache
+*.dll
+*.exe
+*.pdb
+*.log
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.scc
+*.csproj.user
+*.rsuser
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Test results
+[Tt]est[Rr]esult*/
+*.trx
+*.Coverage
+*.coveragexml
+TestResults/
+TestResults.xml
+playwright-report/
+test-results/
+*.html
+!README.md
+
+# Playwright
+playwright/.cache/
+ms-playwright/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*~
+
+# macOS
+.DS_Store
+
+# NuGet
+packages/
+*.nupkg
